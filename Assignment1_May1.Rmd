@@ -1,0 +1,104 @@
+---
+title: "Final_Assignment_1"
+author: "Manish Gyawali"
+date: "May 1, 2017"
+output: html_document
+---
+
+# Loading Data
+act_full <- read.csv("activity.csv", sep = ",", header = TRUE) 
+
+#Splitting Data by Interval and Date
+split_steps_by_interval_full <- split(act_full$steps, act_full$interval)
+split_steps_by_date_full <- split(act_full$steps, act_full$date)
+
+#Initial Histogram
+hist(unlist(split_steps_by_interval_full), main = "New", xlab = "Days", ylab = "Daily Steps Taken")
+
+#Mean and Median of Daily Steps
+
+mean_before <- lapply(split_steps_by_date_full, mean)
+median_before <- lapply(split_steps_by_date_full, median)
+
+#Mean and Median of Steps by Interval
+mean_before1 <- lapply(split_steps_by_interval_full, mean)
+median_before1 <- lapply(split_steps_by_interval_full, median)
+
+#Average Activity Pattern
+
+by_interval <- group_by(act_full, interval) %>% na.exclude 
+mean_steps_interval <- summarize(by_interval, mean(steps))
+ 
+#Time Series Plot of interval vs average steps
+ 
+plot(mean_steps_interval, type = "l")
+mean_steps_interval$`mean(steps)`%>% which.max()
+ 
+#Interval containing maximum steps
+mean_steps_interval[mean_steps_interval$`mean(steps)`%>% which.max(),]
+
+
+#Imputation
+
+for(i in 1:288) {
+  split_steps_by_interval_full[[i]][c(1,8,32,35,40,41,45,61)] <- median(na.omit(i))
+  
+}
+
+lapply(split_steps_by_date_full, na.omit) %>% lapply(sum) %>% unlist %>%
+  hist(xlab = "Total Steps Per Day", main = "Hist", breaks = 10)
+  
+#Histogram of total steps per day
+lapply(split_steps_by_date_full, sum) %>% unlist %>%
+  hist(xlab = "Total Steps Per Day", main = "Hist of total daily steps", breaks = 10)
+  
+#Mean daily steps after imputation
+mean_after <- lapply(split_steps_by_date_full, na.omit) %>% lapply(mean)
+
+#Median daily steps after imputation
+median_after <- lapply(split_steps_by_date_full, na.omit) %>% lapply(median)
+
+#Mean and Median of Steps by Interval after imputation
+mean_after1 <- lapply(split_steps_by_interval_full, mean)
+median_after1 <- lapply(split_steps_by_interval_full, median)
+
+
+#Comments: There are no differences between mean and median total daily steps before and after imputation
+#However, there are differences in means (but not medians) between steps based on intervals 
+#before and after imputation
+
+#Differences amongst activity patterns
+
+mutate_days <- mutate(act_full, weekday = weekdays(as.Date(act_full$date)))
+mutate_days$weekday <- as.factor(mutate_days$weekday)
+
+
+levels(mutate_days$weekday)[levels(mutate_days$weekday)== "Monday"] <- "WeekDays"
+levels(mutate_days$weekday)[levels(mutate_days$weekday)== "Tuesday"] <- "WeekDays"
+levels(mutate_days$weekday)[levels(mutate_days$weekday)== "Wednesday"] <- "WeekDays"
+levels(mutate_days$weekday)[levels(mutate_days$weekday)== "Thursday"] <- "WeekDays"
+levels(mutate_days$weekday)[levels(mutate_days$weekday)== "Friday"] <- "WeekDays"
+levels(mutate_days$weekday)[levels(mutate_days$weekday)== "Saturday"]<- "WeekEnds"
+levels(mutate_days$weekday)[levels(mutate_days$weekday)== "Sunday"] <- "WeekEnds"
+
+
+complete_mutate_days <- (mutate_days[complete.cases(mutate_days),])
+
+weekdays_data <- filter(complete_mutate_days, weekday == "WeekDays")
+weekends_data <- filter(complete_mutate_days, weekday == "WeekEnds")
+
+weekends_int <- group_by(weekends_data, interval)
+summ_weekends <- summarize(weekends_int, mean(steps))
+
+weekdays_int <- group_by(weekdays_data, interval)
+summ_weekdays <- summarize(weekdays_int, mean(steps))
+
+#Panel Plot containing TS plot
+
+par(mfrow=c(2,1))
+
+plot(summ_weekdays$interval, summ_weekdays$`mean(steps)`, type = "l",
+     xlab = "Interval", ylab = "Average Steps Taken", main = "Weekdays")
+
+plot(summ_weekends$interval, summ_weekends$`mean(steps)`, type = "l",
+     xlab = "Interval", ylab = "Average Steps Taken", main = "Weekends")
